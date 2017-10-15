@@ -47,7 +47,7 @@ public class ProxyClientContainer implements Container, ChannelStatusListener {
 
     private Bootstrap bootstrap;
 
-    private Bootstrap realServerBootstrap;
+    private Bootstrap realServerBootstrap; // 代理服务器地址
 
     private Config config = Config.getInstance();
 
@@ -101,6 +101,9 @@ public class ProxyClientContainer implements Container, ChannelStatusListener {
         return new SslHandler(sslEngine);
     }
 
+    /**
+     * 连接lanproxy代理服务器
+     */
     private void connectProxyServer() {
 
         bootstrap.connect(config.getStringValue("server.host"), config.getIntValue("server.port")).addListener(new ChannelFutureListener() {
@@ -117,6 +120,9 @@ public class ProxyClientContainer implements Container, ChannelStatusListener {
                     future.channel().writeAndFlush(proxyMessage);
                     sleepTimeMill = 1000;
                     logger.info("connect proxy server success, {}", future.channel());
+                    logger.info("CM:已经连接上代理服务 info={}", future.channel());
+
+
                 } else {
                     logger.warn("connect proxy server failed", future.cause());
 

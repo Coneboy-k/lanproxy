@@ -51,7 +51,6 @@ public class ProxyChannelManager {
 
     static {
         ProxyConfig.getInstance().addConfigChangedListener(new ConfigChangedListener() {
-
             /**
              * 代理配置发生变化时回调
              */

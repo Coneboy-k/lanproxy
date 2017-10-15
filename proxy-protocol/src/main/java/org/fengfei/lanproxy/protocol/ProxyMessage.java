@@ -63,6 +63,27 @@ public class ProxyMessage {
         return type;
     }
 
+    public String convertTypeName(){
+        String typeStr = "";
+        switch (this.getType()) {
+            case ProxyMessage.TYPE_CONNECT:
+                typeStr= "代理建立连接";
+                break;
+            case ProxyMessage.TYPE_DISCONNECT:
+                typeStr= "断开连接消息";
+                break;
+            case ProxyMessage.TYPE_TRANSFER:
+                typeStr= "代理数据传输";
+                break;
+            case ProxyMessage.TYPE_WRITE_CONTROL:
+                typeStr= "代理之间的同步TYPE_WRITE_CONTROL";
+                break;
+            default:
+                break;
+        }
+        return typeStr;
+    }
+
     public void setType(byte type) {
         this.type = type;
     }

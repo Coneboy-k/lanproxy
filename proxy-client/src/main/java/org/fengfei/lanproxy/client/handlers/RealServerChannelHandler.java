@@ -19,6 +19,7 @@ public class RealServerChannelHandler extends SimpleChannelInboundHandler<ByteBu
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, ByteBuf buf) throws Exception {
+
         Channel realServerChannel = ctx.channel();
         Channel channel = ClientChannelMannager.getChannel();
         if (channel == null) {
@@ -34,12 +35,18 @@ public class RealServerChannelHandler extends SimpleChannelInboundHandler<ByteBu
             proxyMessage.setData(bytes);
             channel.writeAndFlush(proxyMessage);
             logger.debug("write data to proxy server, {}, {}", realServerChannel, channel);
+
+            logger.info("RC: 远程服务返回数据userId={} length={}",userId,bytes.length);
         }
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        Channel realServerChannel = ctx.channel();
+
         super.channelActive(ctx);
+
+        logger.info("RC: 目的服务器 已连接 连接：info={} 可写入状态为={} " ,realServerChannel.toString(),realServerChannel.isWritable());
     }
 
     @Override
@@ -55,14 +62,17 @@ public class RealServerChannelHandler extends SimpleChannelInboundHandler<ByteBu
             proxyMessage.setUri(userId);
             channel.writeAndFlush(proxyMessage);
         }
+        logger.info("RC: 目的服务器 已关闭 连接：info={} 可写入状态为={} " ,realServerChannel.toString(),realServerChannel.isWritable());
 
         super.channelInactive(ctx);
     }
 
     @Override
     public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+
         Channel realServerChannel = ctx.channel();
         String userId = ClientChannelMannager.getRealServerChannelUserId(realServerChannel);
+        // 获取连接代理服务的远程连接
         Channel channel = ClientChannelMannager.getChannel();
         if (channel != null) {
             ProxyMessage proxyMessage = new ProxyMessage();
@@ -70,14 +80,18 @@ public class RealServerChannelHandler extends SimpleChannelInboundHandler<ByteBu
             proxyMessage.setUri(userId);
             proxyMessage.setData(realServerChannel.isWritable() ? new byte[] { 0x01 } : new byte[] { 0x00 });
             channel.writeAndFlush(proxyMessage);
+            logger.info("RC：channelWritabilityChanged :客户端和远程服务器的连接断开 ={}",proxyMessage.toString());
         }
 
+        logger.info("RC: 目的服务器状态发生变化 连接：info={} 可写入状态为={} " ,realServerChannel.toString(),realServerChannel.isWritable());
         super.channelWritabilityChanged(ctx);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        logger.error("exception caught", cause);
+
+        Channel realServerChannel = ctx.channel();
+        logger.info("RC: 目的服务器状态出现异常info={} exception={} " ,realServerChannel.toString(),cause);
         super.exceptionCaught(ctx, cause);
     }
 }

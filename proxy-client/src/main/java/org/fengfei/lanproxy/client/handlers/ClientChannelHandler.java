@@ -16,46 +16,46 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 
 /**
- *
  * @author fengfei
- *
  */
 public class ClientChannelHandler extends SimpleChannelInboundHandler<ProxyMessage> {
 
     private static Logger logger = LoggerFactory.getLogger(ClientChannelHandler.class);
 
-    private Bootstrap bootstrap;
+    private Bootstrap realBootstrap;
 
     private ChannelStatusListener channelStatusListener;
 
     public ClientChannelHandler(Bootstrap bootstrap, ChannelStatusListener channelStatusListener) {
-        this.bootstrap = bootstrap;
+        this.realBootstrap = bootstrap;
         this.channelStatusListener = channelStatusListener;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, ProxyMessage proxyMessage) throws Exception {
-        logger.debug("recieved proxy message, type is {}", proxyMessage.getType());
+        logger.debug("recieved proxy message, type is {}", proxyMessage.convertTypeName());
+
         switch (proxyMessage.getType()) {
-        case ProxyMessage.TYPE_CONNECT:
-            handleConnectMessage(ctx, proxyMessage);
-            break;
-        case ProxyMessage.TYPE_DISCONNECT:
-            handleDisconnectMessage(ctx, proxyMessage);
-            break;
-        case ProxyMessage.TYPE_TRANSFER:
-            handleTransferMessage(ctx, proxyMessage);
-            break;
-        case ProxyMessage.TYPE_WRITE_CONTROL:
-            handleWriteControlMessage(ctx, proxyMessage);
-            break;
-        default:
-            break;
+            case ProxyMessage.TYPE_CONNECT:
+                handleConnectMessage(ctx, proxyMessage);
+                break;
+            case ProxyMessage.TYPE_DISCONNECT:
+                handleDisconnectMessage(ctx, proxyMessage);
+                break;
+            case ProxyMessage.TYPE_TRANSFER:
+                handleTransferMessage(ctx, proxyMessage);
+                break;
+            case ProxyMessage.TYPE_WRITE_CONTROL:
+                handleWriteControlMessage(ctx, proxyMessage);
+                break;
+            default:
+                break;
         }
     }
 
     private void handleWriteControlMessage(ChannelHandlerContext ctx, ProxyMessage proxyMessage) {
         String userId = proxyMessage.getUri();
+        logger.info("LC:代理之间数据同步userId={} ,msg={}",userId,proxyMessage);
         Channel realServerChannel = ClientChannelMannager.getRealServerChannel(userId);
         if (realServerChannel != null) {
             boolean writeable = proxyMessage.getData()[0] == 0x01 ? true : false;
@@ -83,13 +83,15 @@ public class ClientChannelHandler extends SimpleChannelInboundHandler<ProxyMessa
         }
     }
 
+    // 连接消息
     private void handleConnectMessage(ChannelHandlerContext ctx, ProxyMessage proxyMessage) {
         final Channel channel = ctx.channel();
         final String userId = proxyMessage.getUri();
         String[] serverInfo = new String(proxyMessage.getData()).split(":");
         String ip = serverInfo[0];
         int port = Integer.parseInt(serverInfo[1]);
-        bootstrap.connect(ip, port).addListener(new ChannelFutureListener() {
+
+        realBootstrap.connect(ip, port).addListener(new ChannelFutureListener() {
 
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
@@ -97,8 +99,10 @@ public class ClientChannelHandler extends SimpleChannelInboundHandler<ProxyMessa
                     Channel realServerChannel = future.channel();
                     logger.debug("connect realserver success, {}, clientChannelWriteable {}", realServerChannel,
                             channel.isWritable());
-                    ClientChannelMannager.setRealServerChannelReadability(realServerChannel, channel.isWritable(),
-                            true);
+
+                    logger.info("LC:连接远程服务成功 userId={}, info={}, clientChannelWriteable {}",userId, realServerChannel,
+                            channel.isWritable());
+                    ClientChannelMannager.setRealServerChannelReadability(realServerChannel, channel.isWritable(), true);
                     ClientChannelMannager.addRealServerChannel(userId, realServerChannel);
                     ClientChannelMannager.setRealServerChannelUserId(realServerChannel, userId);
                     ProxyMessage proxyMessage = new ProxyMessage();
